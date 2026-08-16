@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OWi-Melder Forst</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <style>
+    :root { --primary: #2e7d32; --bg: #f4f6f8; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #333; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; position: relative; }
+    h2 { color: var(--primary); margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid var(--primary); padding-bottom: 8px; }
+    .step { display: none; }
+    .step.active { display: block; }
+    label { display: block; margin-top: 12px; font-weight: bold; font-size: 0.9rem; }
+    input[type="text"], input[type="date"], input[type="time"], textarea, select {
+      width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1rem;
+    }
+    .checkbox-group { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .checkbox-item { display: flex; align-items: center; gap: 10px; font-weight: normal; }
+    .checkbox-item input { width: 18px; height: 18px; }
+    .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+    .btn-row { display: flex; justify-content: space-between; gap: 10px; }
+    button {
+      padding: 12px; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; flex: 1;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #757575; color: white; }
+    .btn-save { background: #0288d1; color: white; }
+    .btn-start { background: var(--primary); color: white; width: 100%; padding: 18px; font-size: 1.2rem; border-radius: 8px; }
+    .img-preview { display: flex; gap: 10px; margin-top: 10px; }
+    .img-preview img { width: 48%; height: 100px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc; }
+    .settings-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; width: auto; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <button class="settings-btn" onclick="showSettings()">⚙️</button>
+
+  <!-- Startseite -->
+  <div id="step-0" class="step active">
+    <h1 style="text-align: center; color: var(--primary);">OWi-Melder</h1>
+    <p style="text-align: center; color: #666;">Formular zur Erfassung von Ordnungswidrigkeiten im Forstbezirk.</p>
+    <button class="btn-start" onclick="nextStep(1)">Neue OWI melden</button>
+  </div>
+
+  <!-- Einstellungen -->
+  <div id="step-settings" class="step">
+    <h2>Dienststellen-Einstellungen</h2>
+    <label>Dienststelle</label>
+    <input type="text" id="cfg-dienststelle" value="Forstbezirk Eibenstock">
+    <label>Standard-Name</label>
+    <input type="text" id="cfg-name" placeholder="Erika Mustermann">
+    <label>Amtsbezeichnung</label>
+    <input type="text" id="cfg-amt" placeholder="Forstoberinspektorin">
+    <label>Empfänger E-Mail-Adresse</label>
+    <input type="text" id="cfg-email" value="poststelle@fbe.sachsen.de">
+    <div class="btn-group">
+      <button class="btn-primary" onclick="saveSettings()">Speichern</button>
+    </div>
+  </div>
+
+  <!-- 1. Angaben zur OWi -->
+  <div id="step-1" class="step">
+    <h2>1. Angaben zur OWi</h2>
+    <label>Tattag</label>
+    <input type="date" id="f-tattag">
+    <label>Tatzeit</label>
+    <input type="time" id="f-tatzeit">
+    <label>Tatort (GPS/Koordinaten oder manuell)</label>
+    <input type="text" id="f-tatort" placeholder="Wird geladen...">
+    
+    <label>Tatbestand (Mehrfachauswahl)</label>
+    <div class="checkbox-group">
+      <label class="checkbox-item"><input type="checkbox" id="tb-53" value="§ 53 SächsWaldG"> § 53 SächsWaldG i.V.m. § 11 Abs. 4</label>
+      <label class="checkbox-item"><input type="checkbox" id="tb-52" value="§ 52 SächsWaldG" checked> § 52 SächsWaldG</label>
+      <label class="checkbox-item"><input type="checkbox" id="tb-111" value="§ 111 OWIG"> § 111 OWiG</label>
+      <label class="checkbox-item"><input type="checkbox" id="tb-69" value="§ 69 KrWG"> § 69 KrWG / § 13 BioAbfV</label>
+    </div>
+
+    <label>Einzelheiten der Zuwiderhandlung</label>
+    <textarea id="f-einzelheiten" rows="3">Unerlaubtes Parken im Wald</textarea>
+
+    <label>Beweisfotos (max. 2 Fotos)</label>
+    <input type="file" id="f-foto1" accept="image/*" capture="environment" onchange="previewImg(this, 'p1')">
+    <input type="file" id="f-foto2" accept="image/*" capture="environment" onchange="previewImg(this, 'p2')">
+    <div class="img-preview">
+      <img id="p1" style="display:none;">
+      <img id="p2" style="display:none;">
+    </div>
+
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn-secondary" onclick="nextStep(0)">Zurück</button>
+      <button class="btn-primary" onclick="nextStep(2)">Weiter</button>
+    </div>
+  </div>
+
+  <!-- 2. Person des Betroffenen -->
+  <div id="step-2" class="step">
+    <h2>2. Person des Betroffenen</h2>
+    <label>Feststellung der Personalien</label>
+    <select id="f-pers-art">
+      <option value="ausweis">nach Einsicht in Ausweispapier</option>
+      <option value="aussage_betroffener">nach mündlicher Aussage des Betroffenen</option>
+      <option value="aussage_zeuge">nach mündlicher Aussage eines Zeugen</option>
+    </select>
+
+    <label>Name / Geburtsname</label>
+    <input type="text" id="f-name">
+    <label>Vorname</label>
+    <input type="text" id="f-vorname">
+    <label>Geburtsdatum & Geburtsort</label>
+    <div style="display:flex; gap:5px;">
+      <input type="date" id="f-gebdatum">
+      <input type="text" id="f-gebort" placeholder="Geburtsort">
+    </div>
+    <label>Geschlecht</label>
+    <select id="f-geschlecht">
+      <option value="männlich">männlich</option>
+      <option value="weiblich">weiblich</option>
+      <option value="divers">divers</option>
+    </select>
+    <label>Straße und Hausnummer</label>
+    <input type="text" id="f-strasse">
+    <label>PLZ und Wohnort</label>
+    <div style="display:flex; gap:5px;">
+      <input type="text" id="f-plz" placeholder="PLZ" style="width:30%;">
+      <input type="text" id="f-ort" placeholder="Wohnort" style="width:70%;">
+    </div>
+
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn-secondary" onclick="nextStep(1)">Zurück</button>
+      <button class="btn-primary" onclick="nextStep(3)">Weiter</button>
+    </div>
+  </div>
+
+  <!-- 3. KFZ / Gegenstand -->
+  <div id="step-3" class="step">
+    <h2>3. Angaben zum KFZ / Gegenstand</h2>
+    <label>Fahrzeugart</label>
+    <input type="text" id="f-kfz-art" placeholder="z.B. PKW, Traktor">
+    <label>Fabrikat / Marke</label>
+    <input type="text" id="f-kfz-fabrikat" placeholder="z.B. VW, VW Bus">
+    <label>Amtliches Kennzeichen</label>
+    <input type="text" id="f-kfz-kennzeichen" placeholder="z.B. ERZ-AB 123">
+    <label>Anderer ordnungswidrig benutzter Gegenstand</label>
+    <input type="text" id="f-gegenstand">
+
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn-secondary" onclick="nextStep(2)">Zurück</button>
+      <button class="btn-primary" onclick="nextStep(4)">Weiter</button>
+    </div>
+  </div>
+
+  <!-- 4. Wahrnehmung -->
+  <div id="step-4" class="step">
+    <h2>4. Wahrnehmung des Sachverhalts</h2>
+    <label>Wahrnehmung durch</label>
+    <select id="f-wahrnehmung" onchange="toggleZeuge(this.value)">
+      <option value="eigene">Eigene Wahrnehmung</option>
+      <option value="zeuge">Wahrnehmung durch Zeugen</option>
+    </select>
+    <div id="zeuge-block" style="display:none;">
+      <label>Name und Anschrift des Zeugen</label>
+      <textarea id="f-zeuge-info" rows="2"></textarea>
+    </div>
+
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn-secondary" onclick="nextStep(3)">Zurück</button>
+      <button class="btn-primary" onclick="nextStep(5)">Weiter</button>
+    </div>
+  </div>
+
+  <!-- 5. Aussage des Betroffenen -->
+  <div id="step-5" class="step">
+    <h2>5. Aussage des Betroffenen</h2>
+    <label>Aussage / Einlassung bei Anhörung</label>
+    <textarea id="f-aussage" rows="4" placeholder="Optionale Angabe zur Äußerung vor Ort..."></textarea>
+
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn-secondary" onclick="nextStep(4)">Zurück</button>
+      <button class="btn-primary" onclick="nextStep(6)">Weiter</button>
+    </div>
+  </div>
+
+  <!-- 6. Abschluss & Absenden/Speichern -->
+  <div id="step-6" class="step">
+    <h2>6. Hinweis & Abschluss</h2>
+    <label>Dienststelle</label>
+    <input type="text" id="f-dienststelle" readonly>
+    <label>Datum</label>
+    <input type="date" id="f-abschluss-datum">
+    <label>Sachbearbeiter / Erfasser</label>
+    <input type="text" id="f-sachbearbeiter" readonly>
+
+    <div class="btn-group">
+      <button class="btn-save" onclick="processExport(false)">📁 Nur als Excel speichern</button>
+      <button class="btn-primary" style="background:#1b5e20;" onclick="processExport(true)">✉️ Speichern & E-Mail öffnen</button>
+      <button class="btn-secondary" onclick="nextStep(5)">Zurück</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let img1Base64 = null, img2Base64 = null;
+
+  window.onload = function() {
+    const today = new Date().toISOString().split('T')[0];
+    const time = new Date().toTimeString().split(' ')[0].substring(0,5);
+    document.getElementById('f-tattag').value = today;
+    document.getElementById('f-tatzeit').value = time;
+    document.getElementById('f-abschluss-datum').value = today;
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        document.getElementById('f-tatort').value = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+      }, err => {
+        document.getElementById('f-tatort').placeholder = "Ort manuell eingeben...";
+      });
+    }
+
+    loadSettings();
+  };
+
+  function nextStep(step) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(`step-${step}`).classList.add('active');
+  }
+
+  function toggleZeuge(val) {
+    document.getElementById('zeuge-block').style.display = (val === 'zeuge') ? 'block' : 'none';
+  }
+
+  function showSettings() {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-settings').classList.add('active');
+  }
+
+  function saveSettings() {
+    localStorage.setItem('ow_ds', document.getElementById('cfg-dienststelle').value);
+    localStorage.setItem('ow_name', document.getElementById('cfg-name').value);
+    localStorage.setItem('ow_amt', document.getElementById('cfg-amt').value);
+    localStorage.setItem('ow_email', document.getElementById('cfg-email').value);
+    loadSettings();
+    nextStep(0);
+  }
+
+  function loadSettings() {
+    const ds = localStorage.getItem('ow_ds') || "Forstbezirk Eibenstock";
+    const name = localStorage.getItem('ow_name') || "";
+    const amt = localStorage.getItem('ow_amt') || "";
+    
+    document.getElementById('f-dienststelle').value = ds;
+    document.getElementById('f-sachbearbeiter').value = `${name} (${amt})`;
+  }
+
+  function previewImg(input, targetId) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = document.getElementById(targetId);
+        img.src = e.target.result;
+        img.style.display = 'block';
+        if (targetId === 'p1') img1Base64 = e.target.result;
+        if (targetId === 'p2') img2Base64 = e.target.result;
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  async function processExport(sendEmail) {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Anzeige');
+
+    sheet.getCell('B1').value = "Anzeige einer Ordnungswidrigkeit nach SächsWaldG / Umweltrecht";
+    
+    // Abschnitt 1
+    sheet.getCell('B5').value = "Tattag"; sheet.getCell('B6').value = document.getElementById('f-tattag').value;
+    sheet.getCell('G5').value = "Tatzeit"; sheet.getCell('G6').value = document.getElementById('f-tatzeit').value;
+    sheet.getCell('L5').value = "Tatort / Forstort"; sheet.getCell('L6').value = document.getElementById('f-tatort').value;
+    
+    sheet.getCell('B12').value = document.getElementById('tb-52').checked ? "x" : "";
+    sheet.getCell('C12').value = "§ 52 SächsWaldG";
+    sheet.getCell('B22').value = (img1Base64 || img2Base64) ? "x" : "";
+    sheet.getCell('C22').value = "Anlagen (Fotos beigefügt)";
+    sheet.getCell('B25').value = document.getElementById('f-einzelheiten').value;
+
+    // Abschnitt 2
+    const pArt = document.getElementById('f-pers-art').value;
+    if(pArt === 'ausweis') sheet.getCell('C30').value = "[X] nach Einsicht in Ausweispapier";
+    if(pArt === 'aussage_betroffener') sheet.getCell('N30').value = "[X] nach mündlicher Aussage Betroffener";
+    if(pArt === 'aussage_zeuge') sheet.getCell('C32').value = "[X] nach mündlicher Aussage Zeuge";
+
+    sheet.getCell('B34').value = "Name: " + document.getElementById('f-name').value;
+    sheet.getCell('N34').value = "Vorname: " + document.getElementById('f-vorname').value;
+    sheet.getCell('B36').value = "Geburtsdatum: " + document.getElementById('f-gebdatum').value;
+    sheet.getCell('N36').value = "Geburtsort: " + document.getElementById('f-gebort').value;
+    sheet.getCell('J37').value = document.getElementById('f-geschlecht').value;
+    sheet.getCell('B41').value = "Straße: " + document.getElementById('f-strasse').value;
+    sheet.getCell('B43').value = "PLZ: " + document.getElementById('f-plz').value;
+    sheet.getCell('G43').value = "Ort: " + document.getElementById('f-ort').value;
+
+    // Abschnitt 3
+    sheet.getCell('B48').value = "Fahrzeugart: " + document.getElementById('f-kfz-art').value;
+    sheet.getCell('G48').value = "Fabrikat: " + document.getElementById('f-kfz-fabrikat').value;
+    sheet.getCell('O48').value = "Kennzeichen: " + document.getElementById('f-kfz-kennzeichen').value;
+    sheet.getCell('B50').value = "Gegenstand: " + document.getElementById('f-gegenstand').value;
+
+    // Abschnitt 4
+    sheet.getCell('B55').value = "x";
+    sheet.getCell('C55').value = document.getElementById('f-wahrnehmung').value === 'eigene' ? "[X] eigene Wahrnehmung" : "Wahrnehmung durch Zeugen";
+    sheet.getCell('B57').value = document.getElementById('f-zeuge-info').value;
+
+    // Abschnitt 5
+    sheet.getCell('B62').value = document.getElementById('f-aussage').value;
+
+    // Abschnitt 6
+    sheet.getCell('B70').value = document.getElementById('f-dienststelle').value;
+    sheet.getCell('G70').value = document.getElementById('f-abschluss-datum').value;
+    sheet.getCell('L70').value = document.getElementById('f-sachbearbeiter').value;
+
+    // Fotos einbetten
+    if (img1Base64) {
+      const imgId1 = workbook.addImage({ base64: img1Base64, extension: 'png' });
+      sheet.addImage(imgId1, 'B73:G85');
+    }
+    if (img2Base64) {
+      const imgId2 = workbook.addImage({ base64: img2Base64, extension: 'png' });
+      sheet.addImage(imgId2, 'I73:N85');
+    }
+
+    // Datei lokal auf dem Smartphone speichern / herunterladen
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `OWi_Anzeige_${document.getElementById('f-kfz-kennzeichen').value || 'Meldung'}.xlsx`;
+    a.click();
+
+    // Falls gewünscht, E-Mail-Client öffnen
+    if (sendEmail) {
+      const mailTo = localStorage.getItem('ow_email') || "poststelle@fbe.sachsen.de";
+      const subject = encodeURIComponent(`Neue OWi-Anzeige: ${document.getElementById('f-kfz-kennzeichen').value || 'Wald'}`);
+      const body = encodeURIComponent(`Hallo,\n\nanbei befindet sich die generierte OWi-Anzeige.\n\nTatort: ${document.getElementById('f-tatort').value}\nDatum: ${document.getElementById('f-tattag').value}`);
+      window.location.href = `mailto:${mailTo}?subject=${subject}&body=${body}`;
+    }
+  }
+</script>
+</body>
+</html>
